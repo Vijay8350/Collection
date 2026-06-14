@@ -1,0 +1,51 @@
+{% comment %}
+  OptionForge — App Embed
+  Loads the storefront widget on product pages only.
+  Defers JS via requestIdleCallback for LCP < 50ms.
+{% endcomment %}
+
+{% if template contains 'product' %}
+  <script>
+    window.OptionForgeConfig = {
+      shop: {{ shop.permanent_domain | json }},
+      proxyBase: "/apps/optionforge",
+      product: {
+        id: {{ product.id | json }},
+        gid: "gid://shopify/Product/{{ product.id }}",
+        handle: {{ product.handle | json }},
+        title: {{ product.title | json }},
+        price: {{ product.price | json }},
+        currency: {{ shop.currency | json }}
+      },
+      cartFormSelector: 'form[action*="/cart/add"]',
+      previewMode: {{ request.design_mode | default: false | json }},
+      locale: {{ request.locale.iso_code | json }}
+    };
+
+    (function () {
+      var load = function () {
+        var s = document.createElement('script');
+        s.src = "{{ 'optionforge.js' | asset_url }}";
+        s.async = true;
+        document.head.appendChild(s);
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = "{{ 'optionforge.css' | asset_url }}";
+        document.head.appendChild(link);
+      };
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(load, { timeout: 1500 });
+      } else {
+        setTimeout(load, 1);
+      }
+    })();
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "OptionForge",
+  "target": "head",
+  "settings": []
+}
+{% endschema %}

@@ -1,0 +1,21 @@
+query Input {
+  cart {
+    lines {
+      id
+      quantity
+      merchandise {
+        ... on ProductVariant {
+          id
+          product { id title }
+        }
+      }
+      attribute(key: "_optionforge_addon_variant_ids") {
+        value
+      }
+      attributes {
+        key
+        value
+      }
+    }
+  }
+}

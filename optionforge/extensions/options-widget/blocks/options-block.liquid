@@ -1,0 +1,44 @@
+{% comment %}
+  OptionForge — App Block
+  Optional placement marker so merchants can choose where the widget renders
+  in their product template. Without it the loader auto-targets the cart form.
+{% endcomment %}
+
+<div
+  id="optionforge-root-{{ block.id }}"
+  data-optionforge-mount
+  data-product-id="{{ product.id }}"
+  {{ block.shopify_attributes }}
+></div>
+
+{% schema %}
+{
+  "name": "OptionForge — Custom options",
+  "target": "section",
+  "templates": ["product"],
+  "stylesheet": "optionforge.css",
+  "javascript": "optionforge.js",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Display"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout",
+      "default": "stacked",
+      "options": [
+        { "value": "stacked", "label": "Stacked" },
+        { "value": "two-column", "label": "Two-column" }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "show_live_preview",
+      "label": "Show live preview (Premium)",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

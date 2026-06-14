@@ -1,0 +1,255 @@
+// OptionForge — Prisma schema
+// See SHOPIFY_PRODUCT_OPTIONS_APP_BLUEPRINT.md §4.6 for data model rationale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Shopify session storage (required by @shopify/shopify-app-session-storage-prisma) ───
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+// ─── App-specific tables ───
+
+model Shop {
+  id                String    @id @default(cuid())
+  shopifyDomain     String    @unique
+  accessTokenEnc    String // AES-256-GCM encrypted
+  plan              String    @default("free") // free | pro | premium | enterprise
+  shopifyPlan       String? // basic | shopify | advanced | plus
+  currency          String    @default("USD")
+  locale            String    @default("en")
+  timezone          String    @default("UTC")
+  cartTransformId   String? // Shopify-side Cart Transform Function ID (max 1 per shop)
+  installedAt       DateTime  @default(now())
+  uninstalledAt     DateTime?
+  trialEndsAt       DateTime?
+  aiGensThisMonth   Int       @default(0)
+  aiGensResetAt     DateTime  @default(now())
+
+  optionSets       OptionSet[]
+  hiddenVariants   HiddenVariant[]
+  fileUploads      FileUpload[]
+  submissions      Submission[]
+  aiGenerations    AiGeneration[]
+  migrationJobs    MigrationJob[]
+  usageEvents      UsageEvent[]
+
+  @@index([shopifyDomain])
+}
+
+model OptionSet {
+  id                  String   @id @default(cuid())
+  shopId              String
+  name                String
+  status              String   @default("draft") // draft | active | archived
+  appliedScope        String   @default("product") // all | collection | product | tag
+  aiGenerated         Boolean  @default(false)
+  aiGenerationPrompt  String?
+  position            Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  shop              Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  options           Option[]
+  productMappings   ProductMapping[]
+
+  @@index([shopId, status])
+}
+
+model Option {
+  id              String   @id @default(cuid())
+  optionSetId     String
+  type            String // text | textarea | dropdown | radio | checkbox | swatch_color | swatch_image | file | image_upload | dimensions | quantity | number | date | time | email | phone | url | range | toggle | font_picker | calculation | option_group
+  label           String
+  position        Int      @default(0)
+  required        Boolean  @default(false)
+  placeholder     String?
+  helpText        String?
+  validationJson  String   @default("{}") // serialized JSON; keep as text for portability across providers
+
+  optionSet         OptionSet           @relation(fields: [optionSetId], references: [id], onDelete: Cascade)
+  values            OptionValue[]
+  conditionalRules  ConditionalRule[]
+
+  @@index([optionSetId, position])
+}
+
+model OptionValue {
+  id              String   @id @default(cuid())
+  optionId        String
+  label           String
+  value           String
+  position        Int      @default(0)
+  swatchColor     String?
+  swatchImageUrl  String?
+  addonPriceCents Int      @default(0)
+  addonCurrency   String   @default("USD")
+  addonProductId  String? // Shopify product GID (for linked add-on)
+  addonVariantId  String? // Shopify variant GID (auto-created hidden variant)
+  formula         String? // math.js expression for formula pricing
+
+  option Option @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@index([optionId, position])
+}
+
+model ConditionalRule {
+  id            String @id @default(cuid())
+  optionId      String
+  predicateJson String // JSON AND/OR tree
+  action        String // show | hide
+
+  option Option @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@index([optionId])
+}
+
+model ProductMapping {
+  id                  String  @id @default(cuid())
+  optionSetId         String
+  shopifyProductId    String?
+  shopifyCollectionId String?
+  shopifyTag          String?
+
+  optionSet OptionSet @relation(fields: [optionSetId], references: [id], onDelete: Cascade)
+
+  @@unique([optionSetId, shopifyProductId])
+  @@index([shopifyProductId])
+  @@index([shopifyCollectionId])
+}
+
+model HiddenVariant {
+  id                String   @id @default(cuid())
+  shopId            String
+  optionValueId     String?
+  shopifyProductId  String
+  shopifyVariantId  String
+  priceCents        Int
+  sku               String
+  pendingDeletion   Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, pendingDeletion])
+  @@index([shopifyVariantId])
+}
+
+model FileUpload {
+  id                String   @id @default(cuid())
+  shopId            String
+  signedUrl         String
+  publicUrl         String
+  fileSizeBytes     Int
+  mimeType          String
+  originalFilename  String
+  scanStatus        String   @default("pending") // pending | clean | infected
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, expiresAt])
+}
+
+model Submission {
+  id                  String   @id @default(cuid())
+  shopId              String
+  orderId             String?
+  cartToken           String?
+  payloadJson         String // JSON
+  fileUploadIds       String   @default("[]") // JSON array of FileUpload ids
+  compositePreviewUrl String?
+  createdAt           DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, orderId])
+  @@index([cartToken])
+}
+
+model AiGeneration {
+  id              String   @id @default(cuid())
+  shopId          String
+  prompt          String
+  responseJson    String // JSON
+  inputTokens     Int      @default(0)
+  outputTokens    Int      @default(0)
+  costUsdMicros   Int      @default(0)
+  accepted        Boolean  @default(false)
+  optionSetId     String?
+  createdAt       DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
+}
+
+model MigrationJob {
+  id              String    @id @default(cuid())
+  shopId          String
+  source          String // sc | shoppad | globo | easify | hulk
+  status          String    @default("queued") // queued | running | completed | failed | rolled_back
+  detectedCount   Int       @default(0)
+  migratedCount   Int       @default(0)
+  sourceExportUrl String? // backup location
+  rollbackUntil   DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  errorJson       String? // JSON
+  createdAt       DateTime  @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, status])
+}
+
+model UsageEvent {
+  id         String   @id @default(cuid())
+  shopId     String
+  eventType  String
+  metadata   String   @default("{}") // JSON
+  occurredAt DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, eventType, occurredAt])
+}
+
+model Template {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  category        String
+  locale          String   @default("en")
+  jsonDefinition  String // JSON OptionSet definition
+  previewImageUrl String?
+  installCount    Int      @default(0)
+  version         Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category, locale])
+}

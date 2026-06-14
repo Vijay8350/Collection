@@ -1,0 +1,12 @@
+{
+  "name": "cart-transform",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/cart_transform_run.js --bundle --format=esm --outfile=dist/function.js --target=es2022 --platform=neutral"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

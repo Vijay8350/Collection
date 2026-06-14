@@ -1,0 +1,20 @@
+api_version = "2025-01"
+
+[[extensions]]
+name = "OptionForge Cart Transform"
+handle = "cart-transform"
+type = "function"
+
+  [[extensions.targeting]]
+  target = "cart.transform.run"
+  input_query = "src/cart_transform_run.graphql"
+  export = "cart-transform-run"
+
+  [extensions.build]
+  command = "npm run build --workspace=cart-transform"
+  path = "dist/function.js"
+  watch = ["src/**/*.js", "src/**/*.graphql"]
+
+  [extensions.ui.paths]
+  create = "/cart-transforms/new"
+  details = "/cart-transforms/:id"
