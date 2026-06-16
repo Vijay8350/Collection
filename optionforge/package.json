@@ -16,7 +16,8 @@
     "prisma": "prisma",
     "graphql-codegen": "graphql-codegen",
     "typecheck": "tsc --noEmit",
-    "worker": "tsx workers/index.ts"
+    "worker": "tsx workers/index.ts",
+    "build:widget": "esbuild widget-src/optionforge.js --minify --outfile=extensions/options-widget/assets/optionforge.js"
   },
   "type": "module",
   "engines": {

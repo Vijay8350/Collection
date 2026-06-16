@@ -3,6 +3,7 @@ api_version = "2025-01"
 [[extensions]]
 name = "OptionForge Cart Transform"
 handle = "cart-transform"
+uid = "723515e5-bc2e-45c6-6942-564c29099db8e998c0bc"
 type = "function"
 
   [[extensions.targeting]]

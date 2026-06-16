@@ -1,6 +1,7 @@
 api_version = "2025-01"
 
 [[extensions]]
+uid = "8baad6bc-615b-eeb4-4db0-3ca055a57c4fea3c4b90"
 type = "theme"
 name = "OptionForge Widget"
 handle = "options-widget"
