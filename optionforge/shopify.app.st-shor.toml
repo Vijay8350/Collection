@@ -1,13 +1,12 @@
-client_id = "REPLACE_WITH_YOUR_CLIENT_ID"
-name = "optionforge"
-handle = "optionforge"
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "67657980f19bcb445ef4a00335768582"
+name = "st shor"
 application_url = "https://st.apanjob.com"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-dev_store_url = "your-dev-store.myshopify.com"
-include_config_on_deploy = true
 
 [webhooks]
 api_version = "2025-01"
