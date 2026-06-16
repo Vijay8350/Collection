@@ -29,7 +29,13 @@ npx prisma generate                    # regenerate client after schema edits
 npx prisma studio                      # inspect the DB
 ```
 
-There is **no test runner and no linter** — `npm run typecheck` is the verification gate. Run it after any TypeScript change.
+There is **no test runner and no linter** — `npm run typecheck` is the verification gate. Run it after any TypeScript change. `scripts/test-deepseek.mjs` is a standalone connectivity check for the LLM provider (`node scripts/test-deepseek.mjs`).
+
+## Deployment
+
+Production is a **single EC2 box** running web + worker + PostgreSQL + Redis behind nginx (see `DEPLOY.md` for the full runbook). The two Node processes are managed by PM2 via `ecosystem.config.cjs` (`optionforge-web` on `PORT=3000`, `optionforge-worker`) — `pm2 start ecosystem.config.cjs && pm2 save`. The `deploy/` scripts automate provisioning: `setup.sh` (first-run install + nginx + Let's Encrypt), `update.sh` (pull + rebuild + restart), `aws-provision.sh`. `npm run setup` (`prisma generate && prisma migrate deploy`) runs migrations on deploy.
+
+**Multiple Partner app configs** coexist as `shopify.app.*.toml` (e.g. `shopify.app.st-shor.toml`); `shopify.app.toml` is the active one. Switch with `npm run config:use` and re-link with `npm run config:link`. Don't commit real `client_id`s into the template `shopify.app.toml`.
 
 ## Architecture
 
