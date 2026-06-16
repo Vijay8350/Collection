@@ -12,6 +12,46 @@ export function getAiQuota(plan: string): number {
   return AI_QUOTAS[plan] ?? AI_QUOTAS.free;
 }
 
+// Plan limits (Blueprint §3). Enforced server-side so the API can't be used to
+// bypass the UI — a public-app review requirement. env-overridable.
+const OPTION_SET_LIMITS: Record<string, number> = {
+  free: Number(process.env.OPTION_SETS_FREE ?? 5),
+  pro: Number.POSITIVE_INFINITY,
+  premium: Number.POSITIVE_INFINITY,
+  enterprise: Number.POSITIVE_INFINITY,
+};
+
+const OPTIONS_PER_SET_LIMITS: Record<string, number> = {
+  free: Number(process.env.OPTIONS_PER_SET_FREE ?? 15),
+  pro: Number(process.env.OPTIONS_PER_SET_PRO ?? 25),
+  premium: Number(process.env.OPTIONS_PER_SET_PREMIUM ?? 28),
+  enterprise: Number.POSITIVE_INFINITY,
+};
+
+export function getOptionSetLimit(plan: string): number {
+  return OPTION_SET_LIMITS[plan] ?? OPTION_SET_LIMITS.free;
+}
+
+export function getOptionsPerSetLimit(plan: string): number {
+  return OPTIONS_PER_SET_LIMITS[plan] ?? OPTIONS_PER_SET_LIMITS.free;
+}
+
+/** True when the shop has reached its plan's option-set cap. */
+export async function isOptionSetLimitReached(shop: { id: string; plan: string }) {
+  const limit = getOptionSetLimit(shop.plan);
+  if (!Number.isFinite(limit)) return { reached: false, limit };
+  const count = await prisma.optionSet.count({ where: { shopId: shop.id } });
+  return { reached: count >= limit, limit, count };
+}
+
+/** True when an option set has reached its plan's per-set option cap. */
+export async function isOptionLimitReached(shop: { plan: string }, optionSetId: string) {
+  const limit = getOptionsPerSetLimit(shop.plan);
+  if (!Number.isFinite(limit)) return { reached: false, limit };
+  const count = await prisma.option.count({ where: { optionSetId } });
+  return { reached: count >= limit, limit, count };
+}
+
 // Migration tooling pricing (Blueprint §2.7 / §3):
 // - Free on Pro / Premium / Enterprise (no time limit).
 // - Free-tier merchants: free for the first 90 days post-install, then a

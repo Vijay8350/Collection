@@ -20,7 +20,7 @@ import {
 
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { getShopByDomain } from "../lib/shop.server";
+import { getShopByDomain, isOptionLimitReached } from "../lib/shop.server";
 
 const OPTION_TYPES = [
   { label: "Short text", value: "text" },
@@ -84,6 +84,14 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       return { ok: true };
     }
     case "add_option": {
+      // Enforce per-plan options-per-set cap server-side (public-app requirement).
+      const { reached, limit } = await isOptionLimitReached(shop, optionSet.id);
+      if (reached) {
+        return {
+          ok: false,
+          error: `Your ${shop.plan} plan allows up to ${limit} options per set. Upgrade in Settings to add more.`,
+        };
+      }
       const lastPosition = await prisma.option.findFirst({
         where: { optionSetId: optionSet.id },
         orderBy: { position: "desc" },
@@ -244,6 +252,11 @@ function AddOptionForm() {
       <input type="hidden" name="intent" value="add_option" />
       <BlockStack gap="300">
         <Text as="h4" variant="headingSm">Add option</Text>
+        {(fetcher.data as { error?: string } | undefined)?.error && (
+          <Banner tone="warning" title="Plan limit reached">
+            <p>{(fetcher.data as { error?: string }).error}</p>
+          </Banner>
+        )}
         <InlineStack gap="300" align="start">
           <div style={{ minWidth: 200 }}>
             <Select label="Type" name="type" options={OPTION_TYPES} value={type} onChange={setType} />

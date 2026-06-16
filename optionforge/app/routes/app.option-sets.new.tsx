@@ -14,7 +14,7 @@ import {
 
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { getShopByDomain } from "../lib/shop.server";
+import { getShopByDomain, isOptionSetLimitReached } from "../lib/shop.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -29,6 +29,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const appliedScope = String(form.get("appliedScope") || "product");
 
   if (!name) return { error: "Name is required" };
+
+  // Enforce per-plan option-set cap server-side (public-app requirement).
+  const { reached, limit } = await isOptionSetLimitReached(shop);
+  if (reached) {
+    return {
+      error: `Your ${shop.plan} plan allows up to ${limit} option set${limit === 1 ? "" : "s"}. Upgrade in Settings to add more.`,
+    };
+  }
 
   const optionSet = await prisma.optionSet.create({
     data: { shopId: shop.id, name, appliedScope },
